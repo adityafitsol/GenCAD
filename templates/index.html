@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenCAD - Image to 3D</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; }
+        .container { max-width: 600px; margin-top: 50px; }
+        .card { border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .loading { display: none; }
+        #downloadArea { display: none; }
+        #preview { max-width: 100%; margin-top: 20px; border-radius: 10px; display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card p-4">
+            <h2 class="text-center mb-4">GenCAD: Image to 3D</h2>
+            <p class="text-muted text-center">Upload an image (sketch or object) to generate a 3D CAD model in STL format.</p>
+            
+            <form id="uploadForm">
+                <div class="mb-3">
+                    <label for="imageFile" class="form-label">Select Image</label>
+                    <input class="form-control" type="file" id="imageFile" accept="image/*" required>
+                </div>
+                <img id="preview" src="#" alt="Image Preview">
+                <button type="submit" class="btn btn-primary w-100 mt-3" id="submitBtn">Generate STL</button>
+            </form>
+
+            <div class="loading text-center mt-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Generating 3D model... This may take a few seconds.</p>
+            </div>
+
+            <div id="downloadArea" class="text-center mt-4">
+                <div class="alert alert-success">Successfully generated!</div>
+                <a id="downloadLink" href="#" class="btn btn-success btn-lg">Download STL File</a>
+            </div>
+            
+            <div id="errorArea" class="mt-4" style="display: none;">
+                <div class="alert alert-danger" id="errorMessage"></div>
+            </div>
+        </div>
+        <p class="text-center text-muted mt-3"><small>GenCAD: Image-conditioned Computer-Aided Design Generation</small></p>
+    </div>
+
+    <script>
+        const imageFile = document.getElementById('imageFile');
+        const preview = document.getElementById('preview');
+        const uploadForm = document.getElementById('uploadForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const loading = document.querySelector('.loading');
+        const downloadArea = document.getElementById('downloadArea');
+        const downloadLink = document.getElementById('downloadLink');
+        const errorArea = document.getElementById('errorArea');
+        const errorMessage = document.getElementById('errorMessage');
+
+        imageFile.onchange = evt => {
+            const [file] = imageFile.files;
+            if (file) {
+                preview.src = URL.createObjectURL(file);
+                preview.style.display = 'block';
+                downloadArea.style.display = 'none';
+                errorArea.style.display = 'none';
+            }
+        };
+
+        uploadForm.onsubmit = async (e) => {
+            e.preventDefault();
+            
+            const file = imageFile.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // UI state
+            submitBtn.disabled = true;
+            loading.style.display = 'block';
+            downloadArea.style.display = 'none';
+            errorArea.style.display = 'none';
+
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    downloadLink.href = `/download/${result.stl_filename}`;
+                    downloadArea.style.display = 'block';
+                } else {
+                    throw new Error(result.error || 'Generation failed');
+                }
+            } catch (err) {
+                errorMessage.textContent = err.message;
+                errorArea.style.display = 'block';
+            } finally {
+                loading.style.display = 'none';
+                submitBtn.disabled = false;
+            }
+        };
+    </script>
+</body>
+</html>
